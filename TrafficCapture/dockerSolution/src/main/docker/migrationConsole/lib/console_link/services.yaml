@@ -1,10 +1,8 @@
 # These are default values for a local environment and should be changed for a cloud deployment
 source_cluster:
-  endpoint: "https://capture-proxy:9200"
+  endpoint: "http://elasticsearchsource:9200"
   allow_insecure: true
-  basic_auth:
-    username: "admin"
-    password: "admin"
+  no_auth: true
 target_cluster:
   endpoint: "https://opensearchtarget:9200"
   allow_insecure: true
@@ -22,8 +20,8 @@ replay:
 snapshot:
   snapshot_name: "snapshot_2023_01_01"
   fs:
-    repo_path: "/snapshot/test-console"
-  otel_endpoint: "http://otel-collector:4317"
+    repo_path: "/snapshots"
+  # otel_endpoint: "http://otel-collector:4317"
 metadata_migration:
   from_snapshot:
   min_replicas: 0
