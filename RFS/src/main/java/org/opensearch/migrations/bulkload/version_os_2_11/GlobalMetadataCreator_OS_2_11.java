@@ -153,18 +153,40 @@ public class GlobalMetadataCreator_OS_2_11 implements GlobalMetadataCreator {
                 return creationResult.failureType(CreationFailureType.SKIPPED_DUE_TO_FILTER).build();
             }
 
-            log.info("Creating {}: {}", templateType, templateName);
+            // Transform template name if it's a .kibana template
+            String targetTemplateName = FilterScheme.getTargetIndexName(templateName);
+            
+            log.info("Creating {}: {} as {}", templateType, templateName, targetTemplateName);
             try {
                 if (mode == MigrationMode.SIMULATE) {
-                    if (templateType.alreadyExistsCheck.templateAlreadyExists(client, templateName)) {
+                    if (templateType.alreadyExistsCheck.templateAlreadyExists(client, targetTemplateName)) {
                         creationResult.failureType(CreationFailureType.ALREADY_EXISTS);
-                        log.warn("Template {} already exists on the target, it will not be created during a migration", templateName);
+                        log.warn("Template {} (target: {}) already exists on the target, it will not be created during a migration", 
+                               templateName, targetTemplateName);
                     }
                 } else if (mode == MigrationMode.PERFORM) {
-                    var createdTemplate = templateType.creator.createTemplate(client, templateName, templateBody, context);
+                    // Update template patterns if it's a .kibana template
+                    if (!targetTemplateName.equals(templateName)) {
+                        // Update index patterns in the template
+                        if (templateBody.has("index_patterns")) {
+                            var patterns = templateBody.get("index_patterns");
+                            if (patterns.isArray()) {
+                                for (int i = 0; i < patterns.size(); i++) {
+                                    String pattern = patterns.get(i).asText();
+                                    if (pattern.startsWith(".kibana")) {
+                                        ((com.fasterxml.jackson.databind.node.ArrayNode) patterns).set(i, 
+                                            pattern.replace(".kibana", ".migrated_kibana"));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    var createdTemplate = templateType.creator.createTemplate(client, targetTemplateName, templateBody, context);
                     if (createdTemplate.isEmpty()) {
                         creationResult.failureType(CreationFailureType.ALREADY_EXISTS);
-                        log.warn("Template {} already exists on the target, unable to create", templateName);
+                        log.warn("Template {} (target: {}) already exists on the target, unable to create", 
+                               templateName, targetTemplateName);
                     }
                 }
             } catch (Exception e) {

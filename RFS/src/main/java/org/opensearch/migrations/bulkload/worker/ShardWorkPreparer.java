@@ -118,20 +118,26 @@ public class ShardWorkPreparer {
             })
             .forEach(index -> {
                 IndexMetadata indexMetadata = metadataFactory.fromRepo(snapshotName, index.getName());
+                String targetIndexName = FilterScheme.getTargetIndexName(indexMetadata.getName());
+                
                 log.atInfo()
-                    .setMessage("Index {} has {} shards")
+                    .setMessage("Index {} will be migrated as {}, has {} shards")
                     .addArgument(indexMetadata.getName())
+                    .addArgument(targetIndexName)
                     .addArgument(indexMetadata.getNumberOfShards())
                     .log();
+                
                 IntStream.range(0, indexMetadata.getNumberOfShards()).forEach(shardId -> {
                     log.atInfo()
-                        .setMessage("Creating Documents Work Item for index: {}, shard: {}")
+                        .setMessage("Creating Documents Work Item for index: {} (target: {}), shard: {}")
                         .addArgument(indexMetadata.getName())
+                        .addArgument(targetIndexName)
                         .addArgument(shardId)
                         .log();
                     try (var shardSetupContext = context.createShardWorkItemContext()) {
+                        // Store work item with target index name
                         workCoordinator.createUnassignedWorkItem(
-                            new IWorkCoordinator.WorkItemAndDuration.WorkItem(indexMetadata.getName(), shardId, 0).toString(),
+                            new IWorkCoordinator.WorkItemAndDuration.WorkItem(targetIndexName, shardId, 0).toString(),
                             shardSetupContext::createUnassignedWorkItemContext
                         );
                     } catch (IOException e) {

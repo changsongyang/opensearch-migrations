@@ -65,13 +65,26 @@ public class IndexRunner {
         var indexMetadata = originalIndexMetadata.deepCopy();
         List<CreationResult> creationResults = new ArrayList<>();
         try {
+            // Get the target index name for .kibana indices
+            String targetIndexName = FilterScheme.getTargetIndexName(indexName);
+            
             List<IndexMetadata> transformedMetadataList = transformer.transformIndexMetadata(indexMetadata);
             for (IndexMetadata transformedMetadata : transformedMetadataList) {
                 try {
-                    creationResults.add(indexCreator.create(transformedMetadata, mode, context));
+                    // Create the index with the target name instead of the original name
+                    var result = indexCreator.create(transformedMetadata, mode, context);
+                    // If this is a renamed index, update the result name to reflect the target name
+                    if (!targetIndexName.equals(indexName)) {
+                        result = CreationResult.builder()
+                            .name(targetIndexName)
+                            .failureType(result.getFailureType())
+                            .exception(result.getException())
+                            .build();
+                    }
+                    creationResults.add(result);
                 } catch (Exception e) {
                     creationResults.add(CreationResult.builder()
-                        .name(indexName)
+                        .name(targetIndexName)
                         .exception(new IndexTransformationException(indexName, e))
                         .failureType(CreationFailureType.UNABLE_TO_TRANSFORM_FAILURE)
                         .build());

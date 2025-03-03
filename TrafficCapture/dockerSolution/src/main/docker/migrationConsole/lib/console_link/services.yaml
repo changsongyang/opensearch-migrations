@@ -1,6 +1,6 @@
 # These are default values for a local environment and should be changed for a cloud deployment
 source_cluster:
-  endpoint: "http://elasticsearchsource:9200"
+  endpoint: "http://localhost:9200"  # Changed to localhost since we're not using source cluster
   allow_insecure: true
   no_auth: true
 target_cluster:
