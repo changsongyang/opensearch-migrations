@@ -98,6 +98,7 @@ services:
     volumes:
       - sharedLogsVolume:/shared-logs-output
       - ./migrationConsole/lib/console_link/services.yaml:/config/migration_services.yaml
+      - ./snapshots:/snapshots
       # this is a convenience thing for testing -- it should be removed before this makes it to prod.
       # - ./migrationConsole/lib/console_link:/root/lib/console_link
       - ~/.aws:/root/.aws
@@ -118,10 +119,12 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+      - discovery.type=single-node
     ports:
       - '19200:9200'
     volumes:
       - ./snapshots:/snapshots
+      - elasticsearch_data:/usr/share/elasticsearch/data
 
   kibana:
     image: 'docker.elastic.co/kibana/kibana:5.6.16'
@@ -133,13 +136,18 @@ services:
       - ELASTICSEARCH_URL=http://elasticsearchsource:9200
     depends_on:
       - elasticsearchsource
+    volumes:
+      - kibana_data:/usr/share/kibana/data
 
   opensearch-dashboards:
     image: 'opensearchproject/opensearch-dashboards:2.15.0'
     environment:
-      - OPENSEARCH_HOSTS=["http://opensearchtarget:9200"]
+      - 'OPENSEARCH_HOSTS=["https://opensearchtarget:9200"]'
       - OPENSEARCH_USERNAME=admin
       - OPENSEARCH_PASSWORD=myStrongPassword123!
+      - OPENSEARCH_SSL_VERIFICATIONMODE=none
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
     networks:
       - migrations
     ports:
@@ -153,6 +161,10 @@ volumes:
   sharedLogsVolume:
     driver: local
   grafana_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  kibana_data:
     driver: local
 
 networks:
